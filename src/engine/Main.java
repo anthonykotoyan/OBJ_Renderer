@@ -14,7 +14,7 @@ public class Main {
 
         Object[] objData = new Object[0];
         try {
-            objData = OBJLoader.loadOBJ("src/models/male.obj",10);
+            objData = OBJLoader.loadOBJ("src/models/cat.obj",.1f);
         } catch (IOException e) {
             System.err.println("Failed to load OBJ file: " + e.getMessage());
         }
