@@ -8,13 +8,28 @@ public class Renderer extends JPanel {
     float[] vertices;
     float[] textures;
     int[][] faces;
-    Random random;
+    private static final Random random = new Random();
+    static Color[] randColor;
+
+
 
     public Renderer(Object[] objData) {
         this.vertices = (float[]) objData[0];
         this.textures = (float[]) objData[1];
         this.faces = (int[][]) objData[2];
-        this.random = new Random();
+        randColor = new Color[faces.length];
+
+
+        for (int i = 0; i < randColor.length; i++){
+            int red = getRandomInRange(185, 195);
+            int green = getRandomInRange(155, 165);
+            int blue = getRandomInRange(125, 135);
+
+            randColor[i] = new Color(red, green, blue);
+        }
+    }
+    private static int getRandomInRange(int min, int max) {
+        return min + random.nextInt(max - min + 1);
     }
 
 
@@ -25,64 +40,53 @@ public class Renderer extends JPanel {
         int[][] projPoints = proj2d();
 
         // Prepare an array to hold the depth of each triangle and its index
-        double[][] triangleDepths = new double[faces.length][2];
+        double[][] polygonDepths = new double[faces.length][2];
 
         for (int i = 0; i < faces.length; i++) {
-            int v0 = faces[i][0];
-            int v1 = faces[i][1];
-            int v2 = faces[i][2];
 
-            // Replace the depth calculation in the loop
+            float avgX = 0;
+            float avgY = 0;
+            float avgZ = 0;
+            for (int j = 0; j < faces[i].length; j++) {
+                int v = faces[i][j];
+                avgX += vertices[v * 3];
+                avgY += vertices[v * 3 + 1];
+                avgZ += vertices[v * 3 + 2];
+            }
 
-            float avgX = ((vertices[v0 * 3] + vertices[v1 * 3] + vertices[v2 * 3]) / 3.0f) - Camera.pos.x;
-            float avgY = ((vertices[v0 * 3 + 1] + vertices[v1 * 3 + 1] + vertices[v2 * 3 + 1]) / 3.0f) - Camera.pos.y;
 
-            float avgZ = ((vertices[v0 * 3 + 2] + vertices[v1 * 3 + 2] + vertices[v2 * 3 + 2]) / 3.0f) - Camera.pos.z;
-            triangleDepths[i][0] = Math.sqrt(Math.pow(avgX, 2) + Math.pow(avgZ, 2) + Math.pow(avgY, 2));
+            avgX = avgX / faces[i].length - Camera.pos.x;
+            avgY = avgY / faces[i].length - Camera.pos.y;
+            avgZ = avgZ / faces[i].length - Camera.pos.z;
 
-            triangleDepths[i][1] = i;  // Store the index of the face
+            polygonDepths[i][0] = Math.sqrt(Math.pow(avgX, 2) + Math.pow(avgZ, 2) + Math.pow(avgY, 2));
+
+            polygonDepths[i][1] = i;  // Store the index of the face
         }
 
         // Sort the triangles by depth (ascending order)
 
-        java.util.Arrays.sort(triangleDepths, (a, b) -> Double.compare(b[0], a[0]));
+        java.util.Arrays.sort(polygonDepths, (a, b) -> Double.compare(b[0], a[0]));
 
         // Draw the triangles in sorted order
         // Draw the triangles in sorted order
-        for (double[] depthInfo : triangleDepths) {
+        for (double[] depthInfo : polygonDepths) {
             int i = (int) depthInfo[1];  // Retrieve the face index
 
-            int v0 = faces[i][0];
-            int v1 = faces[i][1];
-            int v2 = faces[i][2];
-            if (isTriangleVisible(v0, v1, v2, projPoints)) {
-                float maxDist = 100;
-                float light;
-                float depth = (float) depthInfo[0];  // Correct depth reference
-                if (depth > maxDist) {
-                    depth = maxDist;
-                }
-                if (depth >= maxDist) {
-                    light = 0;
-                } else {
-                    light = 1 - depth / maxDist;
-                }
 
-
-
-                float lightScale = 2.5f * light;
-                int rDef = 10;
-                int gDef = 20;
-                int bDef = 30;
-                int rVal = Math.min(200, (int) (rDef * lightScale)+(int)(rDef*.5f));
-                int gVal = Math.min(200, (int) (gDef * lightScale)+(int)(gDef*.5f));
-                int bVal = Math.min(200, (int) (bDef * lightScale)+(int)(bDef*.5f));
-                Color lightedColor = new Color(rVal, gVal, bVal);
+            if (!isFaceClipping(faces[i], projPoints, i)) {
+                Color lightedColor = calcLighting(depthInfo, i);
                 g.setColor(lightedColor);
 
-                int[] triX = {projPoints[v0][0], projPoints[v1][0], projPoints[v2][0]};
-                int[] triY = {projPoints[v0][1], projPoints[v1][1], projPoints[v2][1]};
-                g.fillPolygon(new Polygon(triX, triY, 3));
+                int[] polyX = new int[faces[i].length];
+                int[] polyY = new int[faces[i].length];
+                for (int j = 0; j < faces[i].length; j++) {
+                    polyX[j] = projPoints[faces[i][j]][0];
+                    polyY[j] = projPoints[faces[i][j]][1];
+                }
+
+
+                g.fillPolygon(new Polygon(polyX, polyY, faces[i].length));
             }
         }
 
@@ -90,12 +94,16 @@ public class Renderer extends JPanel {
     }
 
 
-    private boolean isTriangleVisible(int v0, int v1, int v2, int[][] projPoints) {
-        if (projPoints[v0][0] == 0 && projPoints[v0][1] == 0 || projPoints[v1][0] == 0 && projPoints[v1][1] == 0 || projPoints[v2][0] == 0 && projPoints[v2][1] == 0) {
-            return false;
-        } else {
-            return true;
+
+
+    private boolean isFaceClipping(int[] face, int[][] projPoints, int currFace) {
+        
+        for (int i = 0; i < face.length; i++){
+            if (projPoints[face[i]][0] == 0 && projPoints[face[i]][1] == 0){
+                return true;
+            }
         }
+        return false;
     }
 
     private int[][] proj2d() {
@@ -165,5 +173,33 @@ public class Renderer extends JPanel {
 
         // Create and return the new rotated vector
         return new Vector3f(newX, newY, newZ);
+    }
+
+    private static Color calcLighting(double[] depthInfo, int currFace) {
+        float maxDist = 100;
+        float light;
+        float depth = (float) depthInfo[0];
+        float minLight = .025f;
+
+        if (depth > maxDist) {
+            depth = maxDist;
+        }
+        if (depth >= maxDist) {
+            light = minLight;
+        } else {
+            light = 1 - depth / maxDist;
+        }
+
+
+        float lightScale = light;
+
+        int rDef = randColor[currFace].getRed();
+        int gDef = randColor[currFace].getGreen();
+        int bDef = randColor[currFace].getBlue();
+        int rVal = Math.min(200, (int) (rDef * lightScale));
+        int gVal = Math.min(200, (int) (gDef * lightScale));
+        int bVal = Math.min(200, (int) (bDef * lightScale));
+
+        return new Color(rVal, gVal, bVal);
     }
 }
