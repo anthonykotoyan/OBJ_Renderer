@@ -21,11 +21,15 @@ public class Renderer extends JPanel {
 
 
         for (int i = 0; i < randColor.length; i++){
-            int red = getRandomInRange(185, 195);
-            int green = getRandomInRange(155, 165);
-            int blue = getRandomInRange(125, 135);
+            int randomFactor = 10;
+            int red = getRandomInRange(-randomFactor, randomFactor);
+            int green = getRandomInRange(-randomFactor, randomFactor);
+            int blue = getRandomInRange(-randomFactor, randomFactor);
 
-            randColor[i] = new Color(red, green, blue);
+            Color colorPickMode = new Color(100, 100, 200); // this is only for the color picker in IntelliJ
+
+            randColor[i] = new Color(colorPickMode.getRed()+red, colorPickMode.getGreen()+green, colorPickMode.getBlue()+blue);
+
         }
     }
     private static int getRandomInRange(int min, int max) {
