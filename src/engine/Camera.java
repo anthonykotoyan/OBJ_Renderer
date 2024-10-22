@@ -13,8 +13,5 @@ public class Camera {
 
     }
 
-    public static void forward(float speed){
-        pos.z += Math.cos(rot.y)*speed;
-        pos.x += Math.sin(rot.y)*speed;
-    }
+
 }
